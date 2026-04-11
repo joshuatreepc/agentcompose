@@ -57,7 +57,7 @@ class BaseGenerator(ABC):
                 "skipped": True,
                 "output_path": str(output_path),
                 "hash": spec_hash,
-                "function_name": f"{transformer['name']}_udf",
+                "function_name": transformer["name"],
             }
 
         # Copy utils/primitives.py to the output directory
@@ -153,7 +153,7 @@ class BaseGenerator(ABC):
             if self.verbose:
                 print(f"Created {init_file}")
 
-        # Copy primitives.py from datacompose.operators
+        # Copy primitives.py from agentcompose.operators
         primitives_source = Path(__file__).parent.parent / "operators" / "primitives.py"
         primitives_dest = utils_dir / "primitives.py"
 

@@ -167,6 +167,15 @@ class PrimitiveRegistry:
         else:
             raise AttributeError(f"No primitive '{name}' in {self.namespace_name}")
 
+    def tool(self, func: Optional[Callable]= None, *, debug: bool= False):
+        pass
+    
+    
+    
+    def resource(self, func: Optional[Callable] = None, *, debug:bool =False):
+        pass
+    
+
     def compose(
         self,
         func: Optional[Callable] = None,
@@ -175,7 +184,7 @@ class PrimitiveRegistry:
         steps: Optional[list] = None,
         **namespaces,
     ):
-        """Decorator that converts a function body into a composed transformation pipeline.
+        """Decorator that converts a function body into a composed tool pipeline.
 
         The compose decorator analyzes the AST of a function and extracts a sequence of
         transformation calls, creating a pipeline that applies them in order. This allows

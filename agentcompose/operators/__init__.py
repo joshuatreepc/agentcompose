@@ -1,21 +1,23 @@
 """
-Datacompose Operators Module
-=======================
+agentcompose.operators
+======================
 
-This module provides the core framework for building composable data transformation pipelines.
+Core framework for building composable agent pipelines.
 
-Main Components:
-- SmartPrimitive: Enables partial application of transformations
-- PrimitiveRegistry: Container for organizing related transformations
-- PipelineCompiler: Compiles declarative syntax into executable pipelines
-- StablePipeline: Runtime executor for compiled pipelines
+Main components:
+- SmartPrimitive: enables partial application of primitives
+- PrimitiveRegistry: container for organizing related primitives
+- AgentRegistry: registry for agent-facing resources
+- PipelineCompiler: compiles declarative syntax into executable pipelines
+- StablePipeline: runtime executor for compiled pipelines
 """
 
-from .primitives import SmartPrimitive, PrimitiveRegistry
+from .primitives import AgentRegistry, PrimitiveRegistry, SmartPrimitive
 
 __all__ = [
     "SmartPrimitive",
     "PrimitiveRegistry",
+    "AgentRegistry",
 ]
 
 __version__ = "0.5.0"
