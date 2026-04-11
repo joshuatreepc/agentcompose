@@ -377,7 +377,7 @@ def compose(
         if steps is not None:
             def pipeline(col: Any) -> Any:
                 result = col
-                for step in steps:
+                for step in steps: #type:ignore this is already taken care of.
                     result = step(result)
                 return result
 
