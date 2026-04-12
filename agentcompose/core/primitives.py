@@ -4,9 +4,9 @@ agentcompose/core/primitives.py
 
 Core primitive types: `SmartPrimitive` and `PrimitiveRegistry`.
 
-The `compose` decorator and pipeline compiler live in `decorators.py` and
-`compiler.py` because composition is a cross-cutting assembly operation,
-not a property of any single registry.
+The `compose` and `component` decorators live in `decorators.py` because
+composition is a cross-cutting assembly operation, not a property of any
+single registry.
 """
 
 import logging

@@ -1,209 +1,158 @@
-"""Smoke tests for the @compose decorator chaining primitives end-to-end.
+"""Tests for the @compose decorator.
 
-These tests exercise the current chain-based semantics of @compose: each step
-receives the previous step's output as its single argument. They do NOT involve
-an LLM or any agent framework — they verify that the AST compiler and
-StablePipeline correctly thread a value through a sequence of primitives.
-
-When @compose moves to collector semantics (producing an agent spec rather
-than a runnable chain), these tests will need to be rewritten or replaced.
+Verifies that @compose:
+1. Stamps correct metadata (kind, name, module, requires)
+2. Returns the original function unchanged
+3. Extracts the dependency contract from the function body
 """
 
-from agentcompose.core import StablePipeline, compose
+from agentcompose.core import compose
 from agentcompose.primitives.text import text
 
 
 @compose
-def clean_and_count():
+def clean_and_count(content: str) -> int:
     """Lowercase, strip whitespace, then count words."""
-    text.to_lower()
-    text.strip_whitespace()
-    text.word_count()
+    content = text.to_lower(content)
+    content = text.strip_whitespace(content)
+    return text.word_count(content)
 
 
 @compose
-def safe_word_count():
+def safe_word_count(content: str) -> int:
     """Return 0 for empty inputs, otherwise lowercase/strip/word-count."""
-    if text.is_empty():
-        text.constant_zero()
+    if text.is_empty(content):
+        return text.constant_zero(content)
     else:
-        text.to_lower()
-        text.strip_whitespace()
-        text.word_count()
+        content = text.to_lower(content)
+        content = text.strip_whitespace(content)
+        return text.word_count(content)
 
 
 @compose
-def count_if_non_empty():
-    """Conditional with no else branch — counts words only if non-empty."""
-    if text.is_empty():
-        text.constant_zero()
-
-
-@compose
-def count_if_long_enough():
-    """Condition with an explicit kwarg: only count if longer than 3 chars."""
-    if text.is_longer_than(limit=3):
-        text.word_count()
+def nested_conditional_count(content: str):
+    """Nested conditional inside an else branch."""
+    if text.is_empty(content):
+        return text.constant_zero(content)
     else:
-        text.constant_zero()
-
-
-@compose
-def nested_conditional_count():
-    """Nested conditional inside an else branch.
-
-    - Empty input: return 0.
-    - Short input (<= 3 chars): return 0.
-    - Long input: lowercase/strip/word-count.
-    """
-    if text.is_empty():
-        text.constant_zero()
-    else:
-        if text.is_longer_than(limit=3):
-            text.to_lower()
-            text.strip_whitespace()
-            text.word_count()
+        if text.is_longer_than(content, limit=3):
+            content = text.to_lower(content)
+            content = text.strip_whitespace(content)
+            return text.word_count(content)
         else:
-            text.constant_zero()
+            return text.constant_zero(content)
 
 
-class TestComposePipelineShape:
-    def test_returns_a_stable_pipeline(self):
-        assert isinstance(clean_and_count, StablePipeline)
-
-    def test_pipeline_has_three_steps(self):
-        assert len(clean_and_count.steps) == 3
-
-    def test_pipeline_preserves_source_function_name(self):
-        assert clean_and_count.__name__ == "clean_and_count"
-
-    def test_pipeline_preserves_source_docstring(self):
-        assert clean_and_count.__doc__ is not None
-        assert "count words" in clean_and_count.__doc__
-
-    def test_every_step_is_a_transform(self):
-        for step in clean_and_count.steps:
-            assert step.step_type == "transform"
+@compose
+def empty_workflow():
+    """A compose with no calls."""
+    pass
 
 
-class TestComposePipelineExecution:
-    def test_threads_value_through_all_steps(self):
+@compose
+def calls_bare_function(content: str) -> str:
+    """A compose that calls a non-registry function."""
+    return content.upper()
+
+
+class TestComposeMetadata:
+    def test_kind_is_compose(self):
+        assert clean_and_count._agentcompose["kind"] == "compose"
+
+    def test_name_matches_function_name(self):
+        assert clean_and_count._agentcompose["name"] == "clean_and_count"
+
+    def test_module_is_captured(self):
+        assert clean_and_count._agentcompose["module"] == __name__
+
+    def test_requires_key_exists(self):
+        assert "requires" in clean_and_count._agentcompose
+
+    def test_custom_name(self):
+        @compose(name="custom")
+        def my_workflow():
+            pass
+
+        assert my_workflow._agentcompose["name"] == "custom"
+
+
+class TestComposePreservesFunction:
+    def test_returns_original_function(self):
+        def original(x: str) -> str:
+            return x
+
+        decorated = compose(original)
+        assert decorated is original
+
+    def test_function_remains_callable(self):
         assert clean_and_count("  HELLO WORLD  ") == 2
 
-    def test_handles_empty_string(self):
-        assert clean_and_count("") == 0
+    def test_docstring_preserved(self):
+        assert clean_and_count.__doc__ == "Lowercase, strip whitespace, then count words."
 
-    def test_handles_already_clean_input(self):
-        assert clean_and_count("hello world foo") == 3
+    def test_name_preserved(self):
+        assert clean_and_count.__name__ == "clean_and_count"
 
-    def test_handles_mixed_case_and_padding(self):
-        assert clean_and_count("   One Two THREE four   ") == 4
-
-    def test_collapses_internal_whitespace_via_split(self):
-        # strip_whitespace only trims edges; word_count's split() handles the rest
-        assert clean_and_count("  hello   world  ") == 2
+    def test_type_hints_preserved(self):
+        hints = clean_and_count.__annotations__
+        assert hints["content"] is str
+        assert hints["return"] is int
 
 
-class TestComposeConditionalShape:
-    def test_pipeline_has_single_conditional_step(self):
-        assert len(safe_word_count.steps) == 1
-        assert safe_word_count.steps[0].step_type == "conditional"
+class TestComposeContractExtraction:
+    def test_extracts_sequential_calls(self):
+        requires = clean_and_count._agentcompose["requires"]
+        assert requires == [
+            "text.to_lower",
+            "text.strip_whitespace",
+            "text.word_count",
+        ]
 
-    def test_conditional_has_then_branch_with_one_step(self):
-        conditional = safe_word_count.steps[0]
-        assert conditional.then_branch is not None
-        assert len(conditional.then_branch) == 1
-        assert conditional.then_branch[0].step_type == "transform"
+    def test_extracts_calls_from_both_branches(self):
+        requires = safe_word_count._agentcompose["requires"]
+        assert "text.is_empty" in requires
+        assert "text.constant_zero" in requires
+        assert "text.to_lower" in requires
+        assert "text.word_count" in requires
 
-    def test_conditional_has_else_branch_with_three_steps(self):
-        conditional = safe_word_count.steps[0]
-        assert conditional.else_branch is not None
-        assert len(conditional.else_branch) == 3
-        for step in conditional.else_branch:
-            assert step.step_type == "transform"
+    def test_extracts_calls_from_nested_conditionals(self):
+        requires = nested_conditional_count._agentcompose["requires"]
+        assert "text.is_empty" in requires
+        assert "text.is_longer_than" in requires
+        assert "text.to_lower" in requires
+        assert "text.strip_whitespace" in requires
+        assert "text.word_count" in requires
+        assert requires.count("text.constant_zero") == 2
 
-    def test_conditional_has_callable_condition(self):
-        conditional = safe_word_count.steps[0]
-        assert callable(conditional.condition)
+    def test_empty_body_produces_empty_requires(self):
+        assert empty_workflow._agentcompose["requires"] == []
+
+    def test_preserves_call_order(self):
+        requires = clean_and_count._agentcompose["requires"]
+        assert requires.index("text.to_lower") < requires.index("text.strip_whitespace")
+        assert requires.index("text.strip_whitespace") < requires.index("text.word_count")
+
+    def test_condition_functions_included(self):
+        requires = safe_word_count._agentcompose["requires"]
+        assert requires[0] == "text.is_empty"
 
 
-class TestComposeConditionalExecution:
-    def test_then_branch_runs_for_empty_string(self):
+class TestComposeExecution:
+    def test_sequential_pipeline(self):
+        assert clean_and_count("  HELLO WORLD  ") == 2
+
+    def test_conditional_empty_input(self):
         assert safe_word_count("") == 0
+        assert safe_word_count("   ") == 0
 
-    def test_then_branch_runs_for_whitespace_only(self):
-        assert safe_word_count("   \t\n  ") == 0
-
-    def test_else_branch_runs_for_non_empty_string(self):
+    def test_conditional_non_empty_input(self):
         assert safe_word_count("  HELLO WORLD  ") == 2
 
-    def test_else_branch_runs_for_single_word(self):
-        assert safe_word_count("lonely") == 1
-
-    def test_else_branch_handles_clean_input(self):
-        assert safe_word_count("one two three four") == 4
-
-
-class TestComposeConditionalNoElse:
-    def test_pipeline_has_single_conditional_step(self):
-        assert len(count_if_non_empty.steps) == 1
-        assert count_if_non_empty.steps[0].step_type == "conditional"
-
-    def test_then_branch_has_one_step(self):
-        conditional = count_if_non_empty.steps[0]
-        assert conditional.then_branch is not None
-        assert len(conditional.then_branch) == 1
-
-    def test_else_branch_is_absent(self):
-        conditional = count_if_non_empty.steps[0]
-        assert not conditional.else_branch
-
-    def test_then_branch_runs_on_empty_input(self):
-        assert count_if_non_empty("") == 0
-
-    def test_missing_else_falls_through_unchanged(self):
-        # With no else branch, the original input is returned unchanged.
-        assert count_if_non_empty("hello world") == "hello world"
-
-
-class TestComposeConditionalWithKwarg:
-    def test_pipeline_compiles(self):
-        assert len(count_if_long_enough.steps) == 1
-        assert count_if_long_enough.steps[0].step_type == "conditional"
-
-    def test_condition_callable_honors_kwarg(self):
-        conditional = count_if_long_enough.steps[0]
-        # is_longer_than(limit=3): "hi" is length 2, 2 > 3 is False
-        assert conditional.condition("hi") is False
-        # "hello" is length 5, 5 > 3 is True
-        assert conditional.condition("hello") is True
-
-    def test_short_input_hits_else_branch(self):
-        assert count_if_long_enough("hi") == 0
-
-    def test_long_input_hits_then_branch(self):
-        assert count_if_long_enough("hello world") == 2
-
-
-class TestComposeNestedConditional:
-    def test_pipeline_compiles_with_nested_structure(self):
-        outer = nested_conditional_count.steps[0]
-        assert outer.step_type == "conditional"
-        assert outer.else_branch is not None
-        # The else branch should contain a nested conditional step.
-        assert len(outer.else_branch) == 1
-        inner = outer.else_branch[0]
-        assert inner.step_type == "conditional"
-        assert inner.then_branch is not None
-        assert inner.else_branch is not None
-        assert len(inner.then_branch) == 3
-        assert len(inner.else_branch) == 1
-
-    def test_empty_hits_outer_then_branch(self):
+    def test_nested_conditional_empty(self):
         assert nested_conditional_count("") == 0
 
-    def test_short_hits_inner_else_branch(self):
+    def test_nested_conditional_short(self):
         assert nested_conditional_count("hi") == 0
 
-    def test_long_hits_inner_then_branch(self):
+    def test_nested_conditional_long(self):
         assert nested_conditional_count("  HELLO WORLD  ") == 2

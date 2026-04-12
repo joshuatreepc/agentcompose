@@ -2,16 +2,14 @@
 agentcompose.core
 ==================
 
-Core framework for building composable agent pipelines.
+Core framework for building composable agent workflows.
 
-Main components:
 - SmartPrimitive: enables partial application of primitives
 - PrimitiveRegistry: container for organizing related primitives
-- compose: decorator that turns a function body into an executable pipeline
+- compose: decorator that declares a workflow and extracts its dependency contract
 - component: decorator that tags a function as a tool or resource
 """
 
-from .compiler import CompiledStep, PipelineCompiler, StablePipeline
 from .decorators import component, compose
 from .primitives import PrimitiveRegistry, SmartPrimitive
 
@@ -20,9 +18,6 @@ __all__ = [
     "PrimitiveRegistry",
     "compose",
     "component",
-    "CompiledStep",
-    "PipelineCompiler",
-    "StablePipeline",
 ]
 
-__version__ = "0.5.0"
+__version__ = "0.1.0"
