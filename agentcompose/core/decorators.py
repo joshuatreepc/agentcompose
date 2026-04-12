@@ -1,6 +1,6 @@
 """
-agentcompose/operators/decorators.py
-====================================
+agentcompose/core/decorators.py
+===============================
 
 Public authoring decorators: `@compose` and `@component`.
 
@@ -43,7 +43,7 @@ def compose(
         A compiled pipeline callable.
 
     Example:
-        >>> from agentcompose.operators import PrimitiveRegistry, compose
+        >>> from agentcompose.core import PrimitiveRegistry, compose
         >>>
         >>> text = PrimitiveRegistry("text")
         >>>

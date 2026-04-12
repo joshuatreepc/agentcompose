@@ -9,7 +9,7 @@ When @compose moves to collector semantics (producing an agent spec rather
 than a runnable chain), these tests will need to be rewritten or replaced.
 """
 
-from agentcompose.operators import StablePipeline, compose
+from agentcompose.core import StablePipeline, compose
 from agentcompose.primitives.text import text
 
 

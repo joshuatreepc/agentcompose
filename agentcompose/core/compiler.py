@@ -1,12 +1,12 @@
 """
-agentcompose/operators/compiler.py
-==================================
+agentcompose/core/compiler.py
+=============================
 
 Internal AST-to-pipeline compilation machinery.
 
 This module is an implementation detail of the `@compose` decorator. Users
 should not import from here directly — the public surface lives in
-`decorators.py` and is re-exported from `agentcompose.operators`.
+`decorators.py` and is re-exported from `agentcompose.core`.
 """
 
 import ast

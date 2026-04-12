@@ -11,7 +11,7 @@ Pydantic AI's problem.
 
 from typing import Callable
 
-from agentcompose.operators.primitives import SmartPrimitive
+from agentcompose.core.primitives import SmartPrimitive
 
 
 def to_pydantic_tool(primitive: SmartPrimitive) -> Callable:

@@ -1,6 +1,6 @@
 """
-agentcompose.operators
-======================
+agentcompose.core
+==================
 
 Core framework for building composable agent pipelines.
 

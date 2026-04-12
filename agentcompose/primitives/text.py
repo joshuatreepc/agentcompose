@@ -1,6 +1,6 @@
 """Text-domain primitives."""
 
-from agentcompose.operators import PrimitiveRegistry
+from agentcompose.core import PrimitiveRegistry
 
 text = PrimitiveRegistry("text")
 

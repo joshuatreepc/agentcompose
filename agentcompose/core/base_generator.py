@@ -153,8 +153,8 @@ class BaseGenerator(ABC):
             if self.verbose:
                 print(f"Created {init_file}")
 
-        # Copy primitives.py from agentcompose.operators
-        primitives_source = Path(__file__).parent.parent / "operators" / "primitives.py"
+        # Copy primitives.py from agentcompose.core
+        primitives_source = Path(__file__).parent / "primitives.py"
         primitives_dest = utils_dir / "primitives.py"
 
         if primitives_source.exists() and not primitives_dest.exists():
