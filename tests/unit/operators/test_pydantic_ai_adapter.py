@@ -19,7 +19,7 @@ from pydantic_ai.messages import ToolCallPart, ToolReturnPart
 from pydantic_ai.models.test import TestModel
 
 from agentcompose.core import PrimitiveRegistry
-from agentcompose.core.pydantic_ai import to_pydantic_tool
+from agentcompose.adapters.pydantic_ai import to_pydantic_tool
 from agentcompose.primitives.text import text
 
 

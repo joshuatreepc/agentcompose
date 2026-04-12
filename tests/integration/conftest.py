@@ -3,7 +3,7 @@
 from pydantic_ai import Agent
 from pydantic_ai.messages import ToolCallPart
 
-from agentcompose.core.pydantic_ai import to_pydantic_tool
+from agentcompose.adapters.pydantic_ai import to_pydantic_tool
 
 MODEL = "anthropic:claude-haiku-4-5-20251001"
 
