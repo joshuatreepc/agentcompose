@@ -1,12 +1,13 @@
 """Tests for the @compose decorator.
 
 Verifies that @compose:
-1. Stamps correct metadata (kind, name, module, requires)
+1. Stamps correct metadata (kind, name, module, description, inputs, output, requires)
 2. Returns the original function unchanged
 3. Extracts the dependency contract from the function body
+4. Attaches a .show() method for printing the plan
 """
 
-from agentcompose.core import compose
+from agentcompose.core import Workflow, compose
 from agentcompose.primitives.text import text
 
 
@@ -75,14 +76,33 @@ class TestComposeMetadata:
 
         assert my_workflow._agentcompose["name"] == "custom"
 
+    def test_description_from_docstring(self):
+        assert clean_and_count._agentcompose["description"] == "Lowercase, strip whitespace, then count words."
+
+    def test_description_empty_when_no_docstring(self):
+        @compose
+        def no_doc(x: str) -> str:
+            return x
+
+        assert no_doc._agentcompose["description"] == ""
+
+    def test_inputs_extracted_from_annotations(self):
+        assert clean_and_count._agentcompose["inputs"] == {"content": "str"}
+
+    def test_output_extracted_from_annotations(self):
+        assert clean_and_count._agentcompose["output"] == "int"
+
+    def test_output_none_when_no_return_annotation(self):
+        assert nested_conditional_count._agentcompose["output"] is None
+
 
 class TestComposePreservesFunction:
-    def test_returns_original_function(self):
+    def test_returns_workflow_instance(self):
         def original(x: str) -> str:
             return x
 
         decorated = compose(original)
-        assert decorated is original
+        assert isinstance(decorated, Workflow)
 
     def test_function_remains_callable(self):
         assert clean_and_count("  HELLO WORLD  ") == 2
@@ -156,3 +176,36 @@ class TestComposeExecution:
 
     def test_nested_conditional_long(self):
         assert nested_conditional_count("  HELLO WORLD  ") == 2
+
+
+class TestComposeShow:
+    def test_show_method_exists(self):
+        assert hasattr(clean_and_count, "show")
+        assert callable(clean_and_count.show)
+
+    def test_show_prints_workflow_name(self, capsys):
+        clean_and_count.show()
+        output = capsys.readouterr().out
+        assert "Workflow: clean_and_count" in output
+
+    def test_show_prints_description(self, capsys):
+        clean_and_count.show()
+        output = capsys.readouterr().out
+        assert "Lowercase, strip whitespace, then count words." in output
+
+    def test_show_prints_inputs(self, capsys):
+        clean_and_count.show()
+        output = capsys.readouterr().out
+        assert "content: str" in output
+
+    def test_show_prints_output(self, capsys):
+        clean_and_count.show()
+        output = capsys.readouterr().out
+        assert "int" in output
+
+    def test_show_prints_requires(self, capsys):
+        clean_and_count.show()
+        output = capsys.readouterr().out
+        assert "text.to_lower" in output
+        assert "text.strip_whitespace" in output
+        assert "text.word_count" in output

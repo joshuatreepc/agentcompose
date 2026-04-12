@@ -10,7 +10,16 @@ Core framework for building composable agent workflows.
 - component: decorator that tags a function as a tool or resource
 """
 
-from .decorators import component, compose
+from .decorators import (
+    Component,
+    ComponentMeta,
+    Compose,
+    ComposeMeta,
+    DecoratedComponent,
+    Workflow,
+    component,
+    compose,
+)
 from .primitives import PrimitiveRegistry, SmartPrimitive
 
 __all__ = [
@@ -18,6 +27,12 @@ __all__ = [
     "PrimitiveRegistry",
     "compose",
     "component",
+    "Compose",
+    "Component",
+    "Workflow",
+    "DecoratedComponent",
+    "ComposeMeta",
+    "ComponentMeta",
 ]
 
 __version__ = "0.1.0"

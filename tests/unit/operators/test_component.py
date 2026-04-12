@@ -159,3 +159,62 @@ class TestComponentWithBranching:
         assert branchy._agentcompose["kind"] == "tool"
         assert branchy._agentcompose["name"] == "branchy"
         assert branchy._agentcompose["tags"] == ("guard",)
+
+
+class TestComponentShow:
+    def test_show_method_exists(self):
+        @component
+        def my_func(x: str) -> str:
+            return x
+
+        assert hasattr(my_func, "show")
+        assert callable(my_func.show)
+
+    def test_show_prints_component_name(self, capsys):
+        @component(name="my_tool")
+        def my_func(x: str) -> str:
+            return x
+
+        my_func.show()
+        output = capsys.readouterr().out
+        assert "Component: my_tool" in output
+
+    def test_show_prints_kind(self, capsys):
+        @component(kind="resource")
+        def my_resource() -> str:
+            return "data"
+
+        my_resource.show()
+        output = capsys.readouterr().out
+        assert "Kind: resource" in output
+
+    def test_show_prints_tags(self, capsys):
+        @component(tags=("aws", "s3"))
+        def get_object(bucket: str) -> bytes:
+            return b""
+
+        get_object.show()
+        output = capsys.readouterr().out
+        assert "aws" in output
+        assert "s3" in output
+
+    def test_show_prints_docstring(self, capsys):
+        @component
+        def documented(x: str) -> str:
+            """Does something useful."""
+            return x
+
+        documented.show()
+        output = capsys.readouterr().out
+        assert "Does something useful." in output
+
+    def test_show_prints_inputs_and_output(self, capsys):
+        @component
+        def typed(content: str, limit: int = 5) -> bool:
+            return len(content) > limit
+
+        typed.show()
+        output = capsys.readouterr().out
+        assert "content: str" in output
+        assert "limit: int" in output
+        assert "bool" in output
