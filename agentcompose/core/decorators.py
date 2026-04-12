@@ -114,9 +114,19 @@ class Workflow:
         functools.update_wrapper(self, func)
         self.func = func
         self._agentcompose = meta
+        self._resolved_tools: list[Callable] = self._resolve_tools()
+
+    def _resolve_tools(self) -> list[Any]:
+        """Resolve the requires list via the configured adapter."""
+        from agentcompose.adapters import get_adapter
+        adapter = get_adapter()
+        return adapter.resolve_tools(self)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.func(*args, **kwargs)
+
+    def __iter__(self):
+        return iter(self._resolved_tools)
 
     def show(self) -> None:
         meta = self._agentcompose
@@ -133,7 +143,6 @@ class Workflow:
             for dep in meta["requires"]:
                 lines.append(f"    - {dep}")
         print("\n".join(lines))
-
 
     def __repr__(self) -> str:
         return f"Workflow({self._agentcompose['name']!r})"
@@ -197,7 +206,6 @@ class Compose:
             return summarize(results)
 
         my_workflow.show()   # prints the plan
-        print(compose)       # shows all registered workflows
     """
 
     def __init__(self):
@@ -245,7 +253,6 @@ class Component:
             return len(content.split())
 
         word_count.show()    # prints component metadata
-        print(component)     # shows all registered components
     """
 
     def __init__(self):

@@ -1,36 +1,78 @@
-"""Runtime adapter: SmartPrimitive -> Pydantic AI tool callable.
+"""Runtime adapter: agentcompose → Pydantic AI.
 
-Pydantic AI accepts plain Python functions with type hints and docstrings as
-tools. It introspects the signature to build the JSON schema the LLM sees, and
-uses the docstring as the tool description. Our ``SmartPrimitive`` wraps the
-underlying function plus some metadata (``name``, ``kind``, docstring), so the
-adapter's job is mostly to unwrap the primitive and validate that the caller is
-asking for the right ``kind`` — the actual signature/docstring introspection is
-Pydantic AI's problem.
+Pydantic AI expects plain Python functions with type hints and docstrings
+as tools. This adapter resolves a Workflow's requires list into those
+raw callables.
 """
 
-from typing import Callable
+from typing import Any, Callable
 
-from agentcompose.core.primitives import SmartPrimitive
+from agentcompose.adapters.base import BaseAdapter
+from agentcompose.core.primitives import PrimitiveRegistry, SmartPrimitive
 
 
 def to_pydantic_tool(primitive: SmartPrimitive) -> Callable:
-    """Convert an agentcompose primitive into a Pydantic AI tool callable.
+    """Unwrap a SmartPrimitive into a plain callable for pydantic_ai.
 
-    Args:
-        primitive: A ``SmartPrimitive`` with ``kind="tool"`` (or unclassified).
-
-    Returns:
-        The underlying Python function, ready to be passed to
-        ``pydantic_ai.Agent(tools=[...])``.
+    Validates that the primitive is a tool (not a resource or prompt),
+    then returns the underlying function.
 
     Raises:
-        ValueError: If the primitive's ``kind`` is not ``"tool"`` or ``None``.
+        ValueError: If the primitive's kind is not ``"tool"`` or ``None``.
     """
     if primitive.kind not in (None, "tool"):
         raise ValueError(
-            f"to_pydantic_tool only accepts primitives with kind='tool' "
+            f"to_pydantic_tool only accepts kind='tool' "
             f"(or unclassified); got kind={primitive.kind!r} for "
             f"'{primitive.name}'"
         )
     return primitive.func
+
+
+def to_callable(obj: Any) -> Callable:
+    """Unwrap any agentcompose object into a plain callable for pydantic_ai.
+
+    Handles:
+    - SmartPrimitive → unwrap via to_pydantic_tool
+    - DecoratedComponent → extract .func
+    - Plain callable → pass through
+    """
+    from agentcompose.core.decorators import DecoratedComponent
+
+    if isinstance(obj, SmartPrimitive):
+        return to_pydantic_tool(obj)
+    if isinstance(obj, DecoratedComponent):
+        return obj.func
+    if callable(obj):
+        return obj
+
+    raise TypeError(f"Cannot convert {type(obj).__name__} to a pydantic_ai tool")
+
+
+class PydanticAIAdapter(BaseAdapter):
+
+    def resolve_tools(self, workflow: Any) -> list[Callable]:
+        """Resolve a Workflow's requires list to plain callables for pydantic_ai.
+
+        Walks the requires list, looks up each dependency in the workflow's
+        globals, and converts it to a raw callable via ``to_callable``.
+        """
+        tools: list[Callable] = []
+        func_globals = workflow.func.__globals__
+
+        for dep_name in workflow._agentcompose["requires"]:
+            if "." in dep_name:
+                # Registry call: e.g. "text.word_count"
+                ns_name, method_name = dep_name.split(".", 1)
+                ns = func_globals.get(ns_name)
+                if isinstance(ns, PrimitiveRegistry):
+                    primitive = getattr(ns, method_name, None)
+                    if primitive is not None:
+                        tools.append(to_callable(primitive))
+            else:
+                # Bare function call: e.g. "word_count"
+                obj = func_globals.get(dep_name)
+                if obj is not None:
+                    tools.append(to_callable(obj))
+
+        return tools
