@@ -1091,42 +1091,25 @@ class ShellToolInvocation:
 # ---------------------------------------------------------------------------
 
 
-@shell.register(kind="tool")
+@shell.register(kind="tool", readonly=False)
 async def execute(
     command: str,
     cwd: Optional[str] = None,
     description: Optional[str] = None,
     is_background: bool = False,
-    timeout: float = DEFAULT_INACTIVITY_TIMEOUT_S,
-    max_output_length: int = DEFAULT_MAX_OUTPUT_LENGTH,
-    on_output: Optional[OutputCallback] = None,
-    abort_event: Optional[asyncio.Event] = None,
-    sandbox_manager: Optional[SandboxManager] = None,
-    confirmation_bus: Optional[ConfirmationBus] = None,
-    config: Optional[ShellConfig] = None,
 ) -> ToolResult:
-    """Execute a shell command with full lifecycle support.
-
-    This is a convenience wrapper around ShellToolInvocation for use as a
-    registered primitive. For full control, instantiate ShellToolInvocation
-    directly.
+    """Execute a shell command with streaming output, background support, and timeout.
 
     Args:
         command: The shell command to execute.
         cwd: Working directory. Defaults to the current directory.
         description: Human-readable description of what the command does.
-        is_background: If True, return early and let the process run.
-        timeout: Seconds of inactivity before the process is killed.
-        max_output_length: Max characters for stdout/stderr before truncation.
-        on_output: Callback invoked with cumulative stdout as data arrives.
-        abort_event: If set, the command is cancelled.
-        sandbox_manager: Optional sandbox for denial detection.
-        confirmation_bus: Optional confirmation UI for permission prompts.
-        config: Optional shell configuration provider.
+        is_background: If True, return early and let the process run in the background.
 
     Returns:
-        A ToolResult with llm_content (for the model) and return_display (for the user).
+        A ToolResult with the command output and exit code.
     """
+    ctx = shell.context
     invocation = ShellToolInvocation(
         params=ShellToolParams(
             command=command,
@@ -1134,13 +1117,13 @@ async def execute(
             dir_path=cwd,
             is_background=is_background,
         ),
-        target_dir=cwd or os.getcwd(),
-        sandbox_manager=sandbox_manager,
-        confirmation_bus=confirmation_bus,
-        config=config,
-        max_output_length=max_output_length,
+        target_dir=cwd or ctx.get("target_dir") or os.getcwd(),
+        sandbox_manager=ctx.get("sandbox_manager"),
+        confirmation_bus=ctx.get("confirmation_bus"),
+        config=ctx.get("config"),
+        max_output_length=ctx.get("max_output_length", DEFAULT_MAX_OUTPUT_LENGTH),
     )
     return await invocation.execute(
-        on_output=on_output,
-        abort_event=abort_event,
+        on_output=ctx.get("on_output"),
+        abort_event=ctx.get("abort_event"),
     )

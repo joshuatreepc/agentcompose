@@ -14,6 +14,7 @@ class TestComponentMetadata:
             "name": "my_func",
             "tags": (),
             "module": __name__,
+            "readonly": True,
         }
 
     def test_explicit_kind(self):

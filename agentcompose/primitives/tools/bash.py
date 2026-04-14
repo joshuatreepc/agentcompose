@@ -42,14 +42,11 @@ def _truncate_output(
     )
 
 
-@bash.register(kind="tool")
+@bash.register(kind="tool", readonly=False)
 def execute(
     command: str,
     cwd: str = ".",
     timeout: float = 120.0,
-    max_output_length: int = DEFAULT_MAX_OUTPUT_LENGTH,
-    before_hook: Optional[BeforeBashHook] = None,
-    after_hook: Optional[AfterBashHook] = None,
 ) -> BashResult:
     """Execute a bash command and return stdout, stderr, and exit code.
 
@@ -57,13 +54,15 @@ def execute(
         command: The bash command to execute.
         cwd: Working directory for execution.
         timeout: Maximum seconds to wait before killing the process.
-        max_output_length: Max characters for stdout/stderr before truncation.
-        before_hook: Optional callback that can modify the command before execution.
-        after_hook: Optional callback that can modify the result after execution.
 
     Returns:
         A BashResult with stdout, stderr, and exit_code.
     """
+    ctx = bash.context
+    before_hook = ctx.get("before_hook")
+    after_hook = ctx.get("after_hook")
+    max_output_length = ctx.get("max_output_length", DEFAULT_MAX_OUTPUT_LENGTH)
+
     if before_hook:
         modified = before_hook(command)
         if modified is not None:
@@ -100,14 +99,11 @@ def execute(
     return result
 
 
-@bash.register(kind="tool")
+@bash.register(kind="tool", readonly=False)
 async def execute_async(
     command: str,
     cwd: str = ".",
     timeout: float = 120.0,
-    max_output_length: int = DEFAULT_MAX_OUTPUT_LENGTH,
-    before_hook: Optional[BeforeBashHook] = None,
-    after_hook: Optional[AfterBashHook] = None,
 ) -> BashResult:
     """Execute a bash command asynchronously and return stdout, stderr, and exit code.
 
@@ -115,13 +111,15 @@ async def execute_async(
         command: The bash command to execute.
         cwd: Working directory for execution.
         timeout: Maximum seconds to wait before killing the process.
-        max_output_length: Max characters for stdout/stderr before truncation.
-        before_hook: Optional callback that can modify the command before execution.
-        after_hook: Optional callback that can modify the result after execution.
 
     Returns:
         A BashResult with stdout, stderr, and exit_code.
     """
+    ctx = bash.context
+    before_hook = ctx.get("before_hook")
+    after_hook = ctx.get("after_hook")
+    max_output_length = ctx.get("max_output_length", DEFAULT_MAX_OUTPUT_LENGTH)
+
     if before_hook:
         modified = before_hook(command)
         if modified is not None:

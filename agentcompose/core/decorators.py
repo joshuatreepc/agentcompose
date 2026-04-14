@@ -91,6 +91,7 @@ class ComponentMeta(TypedDict):
     name: str
     tags: tuple[str, ...]
     module: str
+    readonly: bool
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +167,15 @@ class DecoratedComponent:
         self.func = func
         self._agentcompose = meta
 
+    @property
+    def readonly(self) -> bool:
+        """Whether this component is free of side effects.
+
+        Readonly components are safe to run in parallel; mutators should
+        be sequenced by the orchestrator.
+        """
+        return self._agentcompose["readonly"]
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         return self.func(*args, **kwargs)
 
@@ -173,6 +183,7 @@ class DecoratedComponent:
         meta = self._agentcompose
         lines = [f"Component: {meta['name']}"]
         lines.append(f"  Kind: {meta['kind']}")
+        lines.append(f"  Readonly: {meta['readonly']}")
         if meta.get("tags"):
             lines.append(f"  Tags: {', '.join(meta['tags'])}")
         lines.append(f"  Module: {meta['module']}")
@@ -248,20 +259,25 @@ class Component:
 
     Usage::
 
-        @component
+        @component(readonly=True)
         def word_count(content: str) -> int:
             return len(content.split())
 
+        @component(readonly=False)
+        def deploy(version: str) -> str:
+            return bash.execute(f"deploy.sh {version}")
+
         word_count.show()    # prints component metadata
+        word_count.readonly  # True
     """
 
     def __init__(self):
         self._registered: list[DecoratedComponent] = []
 
     @overload
-    def __call__(self, func: Callable, *, kind: str = "tool", name: Optional[str] = None, tags: tuple[str, ...] = ()) -> DecoratedComponent: ...
+    def __call__(self, func: Callable, *, kind: str = "tool", name: Optional[str] = None, tags: tuple[str, ...] = (), readonly: bool = True) -> DecoratedComponent: ...
     @overload
-    def __call__(self, func: None = None, *, kind: str = "tool", name: Optional[str] = None, tags: tuple[str, ...] = ()) -> Callable[[Callable], DecoratedComponent]: ...
+    def __call__(self, func: None = None, *, kind: str = "tool", name: Optional[str] = None, tags: tuple[str, ...] = (), readonly: bool = True) -> Callable[[Callable], DecoratedComponent]: ...
 
     def __call__(
         self,
@@ -270,6 +286,7 @@ class Component:
         kind: str = "tool",
         name: Optional[str] = None,
         tags: tuple[str, ...] = (),
+        readonly: bool = True,
     ) -> DecoratedComponent | Callable[[Callable], DecoratedComponent]:
         def decorator(fn: Callable) -> DecoratedComponent:
             meta = ComponentMeta(
@@ -277,6 +294,7 @@ class Component:
                 name=name or fn.__name__,
                 tags=tags,
                 module=fn.__module__,
+                readonly=readonly,
             )
             dc = DecoratedComponent(fn, meta)
             self._registered.append(dc)

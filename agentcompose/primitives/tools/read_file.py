@@ -508,43 +508,32 @@ class ReadFileToolInvocation:
 # ---------------------------------------------------------------------------
 
 
-@read_file.register(kind="tool")
+@read_file.register(kind="tool", readonly=True)
 def execute(
     file_path: str,
     start_line: Optional[int] = None,
     end_line: Optional[int] = None,
-    target_dir: Optional[str] = None,
-    config: Optional[ReadFileConfig] = None,
-    max_lines: int = DEFAULT_MAX_LINES,
-    max_length: int = DEFAULT_MAX_READ_LENGTH,
 ) -> ToolResult:
-    """Read a file with line range selection, truncation, and workspace validation.
-
-    This is a convenience wrapper around ReadFileToolInvocation for use as a
-    registered primitive. For full control, instantiate ReadFileToolInvocation
-    directly.
+    """Read a file with optional line range selection.
 
     Args:
-        file_path: Path to the file to read (absolute or relative to target_dir).
+        file_path: Path to the file to read (absolute or relative to workspace root).
         start_line: 1-based start line (inclusive). None starts from beginning.
         end_line: 1-based end line (inclusive). None reads to the end.
-        target_dir: Workspace root directory. Defaults to cwd.
-        config: Optional configuration provider for path validation and ignore patterns.
-        max_lines: Maximum number of lines before truncation.
-        max_length: Maximum character count before truncation.
 
     Returns:
-        A ToolResult with llm_content (for the model) and return_display (for the user).
+        The file content with line numbers, or an error message.
     """
+    ctx = read_file.context
     invocation = ReadFileToolInvocation(
         params=ReadFileToolParams(
             file_path=file_path,
             start_line=start_line,
             end_line=end_line,
         ),
-        target_dir=target_dir,
-        config=config,
-        max_lines=max_lines,
-        max_length=max_length,
+        target_dir=ctx.get("target_dir"),
+        config=ctx.get("config"),
+        max_lines=ctx.get("max_lines", DEFAULT_MAX_LINES),
+        max_length=ctx.get("max_length", DEFAULT_MAX_READ_LENGTH),
     )
     return invocation.execute()
