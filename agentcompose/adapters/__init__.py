@@ -8,7 +8,7 @@ into a specific agent framework.
 
 import os
 
-from .base import BaseAdapter
+from .base import BaseAdapter, ToolKindError, ToolResolutionError
 
 
 def get_adapter(name: str | None = None) -> BaseAdapter:
