@@ -2,7 +2,6 @@
 
 from .ask_user import ask_user, AskUserInvocation, Question
 from .bash import bash, BashResult
-from .files import files, ReadResult, WriteResult
 from .glob import glob_tool, GlobToolInvocation, GlobToolParams, GlobEntry
 from .grep import grep, GrepToolInvocation, GrepToolParams, GrepMatch
 from .modifable_tool import (
@@ -29,10 +28,6 @@ __all__ = [
     # bash
     "bash",
     "BashResult",
-    # files
-    "files",
-    "ReadResult",
-    "WriteResult",
     # glob
     "glob_tool",
     "GlobToolInvocation",
